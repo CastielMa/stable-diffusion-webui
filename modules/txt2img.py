@@ -9,14 +9,15 @@ from modules.ui import plaintext_to_html
 import gradio as gr
 
 
-def txt2img(id_task: str, prompt: str, negative_prompt: str, prompt_styles, steps: int, sampler_name: str, n_iter: int, batch_size: int, cfg_scale: float, height: int, width: int, enable_hr: bool, denoising_strength: float, hr_scale: float, hr_upscaler: str, hr_second_pass_steps: int, hr_resize_x: int, hr_resize_y: int, hr_checkpoint_name: str, hr_sampler_name: str, hr_prompt: str, hr_negative_prompt, override_settings_texts, request: gr.Request, *args):
+def txt2img(id_task: str, critical_token: str, prompt: str, style_token: str, quality_token: str, model_activation: str, negative_prompt: str, prompt_styles, steps: int, sampler_name: str, n_iter: int, batch_size: int, cfg_scale: float, height: int, width: int, enable_hr: bool, denoising_strength: float, hr_scale: float, hr_upscaler: str, hr_second_pass_steps: int, hr_resize_x: int, hr_resize_y: int, hr_checkpoint_name: str, hr_sampler_name: str, hr_prompt: str, hr_negative_prompt, override_settings_texts, request: gr.Request, *args):
     override_settings = create_override_settings_dict(override_settings_texts)
 
+    full_prompt = critical_token + ", " + prompt + ", " + style_token + ", " + quality_token + ", " + model_activation
     p = processing.StableDiffusionProcessingTxt2Img(
         sd_model=shared.sd_model,
         outpath_samples=opts.outdir_samples or opts.outdir_txt2img_samples,
         outpath_grids=opts.outdir_grids or opts.outdir_txt2img_grids,
-        prompt=prompt,
+        prompt=full_prompt,
         styles=prompt_styles,
         negative_prompt=negative_prompt,
         sampler_name=sampler_name,
@@ -46,7 +47,7 @@ def txt2img(id_task: str, prompt: str, negative_prompt: str, prompt_styles, step
     p.user = request.username
 
     if cmd_opts.enable_console_prompts:
-        print(f"\ntxt2img: {prompt}", file=shared.progress_print_out)
+        print(f"\ntxt2img full prompt: {full_prompt}", file=shared.progress_print_out)
 
     with closing(p):
         processed = modules.scripts.scripts_txt2img.run(p, *args)

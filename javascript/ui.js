@@ -219,15 +219,87 @@ function ask_for_style_name(_, prompt_text, negative_prompt_text) {
     return [name_, prompt_text, negative_prompt_text];
 }
 
-function confirm_clear_prompt(prompt, negative_prompt) {
+function confirm_clear_prompt(critical_token, prompt, style_token, quality_token, model_activation, negative_prompt){
     if (confirm("Delete prompt?")) {
+        critical_token = "";
         prompt = "";
+        style_token = "";
+        quality_token = "";
+        model_activation = "";
         negative_prompt = "";
     }
 
-    return [prompt, negative_prompt];
+    return [critical_token, prompt, style_token, quality_token, model_activation, negative_prompt];
 }
 
+function process_json_gpt_prompt(gpt_prompt, critical_token, prompt, style_token, quality_token, model_activation, negative_prompt) {
+    let categories = { "gender": "critical", "camera_distance": "critical_2", "age": "critical",
+        "action": "prompt",
+        "genre": "style", "region": "style", "hair_color": "style", "eye_color": "style", "hair_style": "style",
+        "clothing_top": "style", "clothing_bottom": "style", "place": "style",
+        "time_of_day": "style", "visual_effect": "style"}
+
+    let keyAppendix = {
+        "hair_color": "hair",
+        "eye_color": "eyes",
+        "hair_style": "hair",
+        "age": "years old"
+    }
+
+    try {
+        var gPrompt = JSON.parse(gpt_prompt);
+        gpt_prompt = JSON.stringify(gPrompt);
+        var critical_token_input = "";
+        var critical_token_input_2 = "";
+        var prompt_input = "";
+        var style_token_input = "";
+        for (const [key, value] of Object.entries(gPrompt)) {
+            let keyword = key.toLowerCase()
+            if (keyword in categories) {
+                let category = categories[keyword]
+                if (category === "critical") {
+                    if (keyword in keyAppendix) {
+                        let subject = keyAppendix[keyword]
+                        critical_token_input += value + " " + subject + ", "
+                    } else {
+                        critical_token_input += value + ", "
+                    }
+                } else if (category === "prompt") {
+                    prompt_input += value + ", "
+                } else if (category === "critical_2") {
+                    critical_token_input_2 += value + ", "
+                } else if (category === "style") {
+                    if (keyword in keyAppendix) {
+                        let subject = keyAppendix[keyword]
+                        style_token_input += value + " " + subject + ", "
+                    } else {
+                        style_token_input += value + ", "
+                    }
+                } else {
+                    console.error("Unrecognized prompt category");
+                }
+            }
+        }
+
+        critical_token_input = critical_token_input.slice(0, -2);
+        critical_token_input_2 = critical_token_input_2.slice(0, -2);
+        prompt_input = prompt_input.slice(0, -2);
+        style_token_input = style_token_input.slice(0, -2);
+        let quality_token_input = "best quality, extremely detailed";
+        let model_activation_input = "<" + "lora:stylized_3dcg_v4-epoch-000012:0.8" + ">"
+        let negative_prompt_input = "EasyNegativeV2, (low quality:1.2), (worst quality:1.2), nsfw, extra arm, extra fingers, logo"
+        critical_token = critical_token_input + ", " + critical_token_input_2
+        prompt = prompt_input
+        style_token = style_token_input
+        quality_token = quality_token_input
+        model_activation = model_activation_input
+        negative_prompt = negative_prompt_input
+        return [gpt_prompt, critical_token, prompt, style_token, quality_token, model_activation, negative_prompt];
+    } catch (e) {
+        prompt = "Invalid json format"
+        return [gpt_prompt, critical_token, prompt, style_token, quality_token, model_activation, negative_prompt];
+    }
+}
 
 var opts = {};
 onAfterUiUpdate(function() {

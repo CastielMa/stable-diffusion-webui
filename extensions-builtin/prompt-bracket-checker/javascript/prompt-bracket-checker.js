@@ -35,7 +35,11 @@ function setupBracketChecking(id_prompt, id_counter) {
 }
 
 onUiLoaded(function() {
+    setupBracketChecking('txt2img_critical_token', 'txt2img_critical_token_counter');
     setupBracketChecking('txt2img_prompt', 'txt2img_token_counter');
+    setupBracketChecking('txt2img_style_token', 'txt2img_style_token_counter');
+    setupBracketChecking('txt2img_quality_token', 'txt2img_quality_token_counter');
+    setupBracketChecking('txt2img_model_activation', 'txt2img_model_activation_counter');
     setupBracketChecking('txt2img_neg_prompt', 'txt2img_negative_token_counter');
     setupBracketChecking('img2img_prompt', 'img2img_token_counter');
     setupBracketChecking('img2img_neg_prompt', 'img2img_negative_token_counter');

@@ -3,6 +3,10 @@ import os.path
 import sys
 import gc
 import threading
+import shutil
+import errno
+
+import git
 
 import torch
 import re
@@ -14,7 +18,7 @@ import ldm.modules.midas as midas
 
 from ldm.util import instantiate_from_config
 
-from modules import paths, shared, modelloader, devices, script_callbacks, sd_vae, sd_disable_initialization, errors, hashes, sd_models_config, sd_unet, sd_models_xl, cache, extra_networks, processing, lowvram, sd_hijack
+from modules import extensions, paths, shared, modelloader, devices, script_callbacks, sd_vae, sd_disable_initialization, errors, hashes, sd_models_config, sd_unet, sd_models_xl, cache, extra_networks, processing, lowvram, sd_hijack
 from modules.timer import Timer
 import tomesd
 
@@ -146,9 +150,9 @@ def list_models():
     if shared.cmd_opts.no_download_sd_model or cmd_ckpt != shared.sd_model_file or os.path.exists(cmd_ckpt):
         model_url = None
     else:
-        model_url = "https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.safetensors"
+        model_url = "https://civitai.com/api/download/models/110838"
 
-    model_list = modelloader.load_models(model_path=model_path, model_url=model_url, command_path=shared.cmd_opts.ckpt_dir, ext_filter=[".ckpt", ".safetensors"], download_name="v1-5-pruned-emaonly.safetensors", ext_blacklist=[".vae.ckpt", ".vae.safetensors"])
+    model_list = modelloader.load_models(model_path=model_path, model_url=model_url, command_path=shared.cmd_opts.ckpt_dir, ext_filter=[".ckpt", ".safetensors"], download_name="bluePencilRealistic_v1.safetensors", ext_blacklist=[".vae.ckpt",".vae.safetensors"])
 
     if os.path.exists(cmd_ckpt):
         checkpoint_info = CheckpointInfo(cmd_ckpt)
@@ -162,9 +166,112 @@ def list_models():
         checkpoint_info = CheckpointInfo(filename)
         checkpoint_info.register()
 
+    #vae_url = "https://huggingface.co/casque/vaeFtMse840000Ema_v100/blob/main/vaeFtMse840000Ema_v100.pt"
+    vae_url = "https://civitai.com/api/download/models/80869"
+
+    vae_model_name = "bluePencilRealistic_v1.ckpt" if getattr(shared.sd_model, 'is_sdxl', False) else "bluePencilRealistic_v1.ckpt"
+    vae_model_path = os.path.join(paths.models_path, "VAE", vae_model_name)
+    if not os.path.exists(vae_model_path):
+        vae_model_path = os.path.join(paths.script_path, "models", "VAE", vae_model_name)
+    download_vae_model(vae_model_path, vae_url)
+
+    loRA_url = "https://civitai.com/api/download/models/44570"
+
+    lora_model_name = "stylized_3dcg_v4-epoch-000012.safetensors"
+    lora_model_path = os.path.join(paths.models_path, "Lora", lora_model_name)
+    if not os.path.exists(lora_model_path):
+        lora_model_path = os.path.join(paths.script_path, "models", "Lora", lora_model_name)
+    download_lora_model(lora_model_path, loRA_url)
+
+
+def download_vae_model(model_path, model_url):
+    if not os.path.exists(model_path):
+        os.makedirs(os.path.dirname(model_path), exist_ok=True)
+
+        print(f'Downloading VAE model to: {model_path}')
+        torch.hub.download_url_to_file(model_url, model_path)
+
+
+def download_lora_model(model_path, model_url):
+    if not os.path.exists(model_path):
+        os.makedirs(os.path.dirname(model_path), exist_ok=True)
+
+        print(f'Downloading LoRA model to: {model_path}')
+        torch.hub.download_url_to_file(model_url, model_path)
+
 
 re_strip_checksum = re.compile(r"\s*\[[^]]+]\s*$")
 
+def list_extensions():
+    install_extension_from_url(None, "https://github.com/Bing-su/adetailer")
+    install_extension_from_url(None, "https://github.com/Mikubill/sd-webui-controlnet")
+
+
+def install_extension_from_url(dirname, url, branch_name=None):
+    assert not shared.cmd_opts.disable_extension_access, "extension access disabled because of command line flags"
+
+    if isinstance(dirname, str):
+        dirname = dirname.strip()
+    if isinstance(url, str):
+        url = url.strip()
+
+    assert url, 'No URL specified'
+
+    if dirname is None or dirname == "":
+        *parts, last_part = url.split('/')
+        last_part = normalize_git_url(last_part)
+
+        dirname = last_part
+
+    target_dir = os.path.join(extensions.extensions_dir, dirname)
+    if os.path.exists(target_dir):
+        print(f'Extension directory already exists: {target_dir}')
+        return
+
+    normalized_url = normalize_git_url(url)
+    if any(x for x in extensions.extensions if normalize_git_url(x.remote) == normalized_url):
+        print(f'Extension with this URL is already installed: {url}')
+        return
+
+    tmpdir = os.path.join(paths.data_path, "tmp", dirname)
+
+    try:
+        shutil.rmtree(tmpdir, True)
+        if not branch_name:
+            # if no branch is specified, use the default branch
+            with git.Repo.clone_from(url, tmpdir, filter=['blob:none']) as repo:
+                repo.remote().fetch()
+                for submodule in repo.submodules:
+                    submodule.update()
+        else:
+            with git.Repo.clone_from(url, tmpdir, filter=['blob:none'], branch=branch_name) as repo:
+                repo.remote().fetch()
+                for submodule in repo.submodules:
+                    submodule.update()
+        try:
+            os.rename(tmpdir, target_dir)
+        except OSError as err:
+            if err.errno == errno.EXDEV:
+                # Cross device link, typical in docker or when tmp/ and extensions/ are on different file systems
+                # Since we can't use a rename, do the slower but more versitile shutil.move()
+                shutil.move(tmpdir, target_dir)
+            else:
+                # Something else, not enough free space, permissions, etc.  rethrow it so that it gets handled.
+                raise err
+
+        import launch
+        launch.run_extension_installer(target_dir)
+
+        extensions.list_extensions()
+    finally:
+        shutil.rmtree(tmpdir, True)
+
+def normalize_git_url(url):
+    if url is None:
+        return ""
+
+    url = url.replace(".git", "")
+    return url
 
 def get_closet_checkpoint_match(search_string):
     if not search_string:

@@ -40,7 +40,11 @@ function recalculatePromptTokens(name) {
 
 function recalculate_prompts_txt2img() {
     // Called from Gradio
+    recalculatePromptTokens('txt2img_critical_token');
     recalculatePromptTokens('txt2img_prompt');
+    recalculatePromptTokens('txt2img_style_token');
+    recalculatePromptTokens('txt2img_quality_token');
+    recalculatePromptTokens('txt2img_model_activation');
     recalculatePromptTokens('txt2img_neg_prompt');
     return Array.from(arguments);
 }
@@ -76,7 +80,11 @@ function setupTokenCounting(id, id_counter, id_button) {
 }
 
 function setupTokenCounters() {
+    setupTokenCounting('txt2img_critical_token', 'txt2img_critical_token_counter', 'txt2img_critical_token_button');
     setupTokenCounting('txt2img_prompt', 'txt2img_token_counter', 'txt2img_token_button');
+    setupTokenCounting('txt2img_style_token', 'txt2img_style_token_counter', 'txt2img_style_token_button');
+    setupTokenCounting('txt2img_quality_token', 'txt2img_quality_token_counter', 'txt2img_quality_token_button');
+    setupTokenCounting('txt2img_model_activation', 'txt2img_model_activation_counter', 'txt2img_model_activation_button');
     setupTokenCounting('txt2img_neg_prompt', 'txt2img_negative_token_counter', 'txt2img_negative_token_button');
     setupTokenCounting('img2img_prompt', 'img2img_token_counter', 'img2img_token_button');
     setupTokenCounting('img2img_neg_prompt', 'img2img_negative_token_counter', 'img2img_negative_token_button');

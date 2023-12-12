@@ -77,7 +77,7 @@ extra_networks_symbol = '\U0001F3B4'  # 🎴
 switch_values_symbol = '\U000021C5' # ⇅
 restore_progress_symbol = '\U0001F300' # 🌀
 detect_image_size_symbol = '\U0001F4D0'  # 📐
-
+process_json_gpt_prompt_symbol = '\U0001f504'  # 🔄
 
 plaintext_to_html = ui_common.plaintext_to_html
 
@@ -181,13 +181,32 @@ class Toprow:
                 with gr.Row():
                     with gr.Column(scale=80):
                         with gr.Row():
-                            self.prompt = gr.Textbox(label="Prompt", elem_id=f"{id_part}_prompt", show_label=False, lines=3, placeholder="Prompt (press Ctrl+Enter or Alt+Enter to generate)", elem_classes=["prompt"])
-                            self.prompt_img = gr.File(label="", elem_id=f"{id_part}_prompt_image", file_count="single", type="binary", visible=False)
-
+                            self.gpt_prompt = gr.Textbox(label="GPT prompt", elem_id=f"{id_part}_gpt_prompt", show_label=True, lines=5, placeholder="Full GPT prompt in json format (press Ctrl+Enter or Alt+Enter to generate)", elem_classes=["prompt"])
                 with gr.Row():
                     with gr.Column(scale=80):
                         with gr.Row():
-                            self.negative_prompt = gr.Textbox(label="Negative prompt", elem_id=f"{id_part}_neg_prompt", show_label=False, lines=3, placeholder="Negative prompt (press Ctrl+Enter or Alt+Enter to generate)", elem_classes=["prompt"])
+                            self.critical_token = gr.Textbox(label="Critical token", elem_id=f"{id_part}_critical_token", interactive=True, show_label=True, lines=1, placeholder="Tokens that influence the final out hit/miss ratio (press Ctrl+Enter or Alt+Enter to generate)", elem_classes=["prompt"])
+                with gr.Row():
+                    with gr.Column(scale=80):
+                        with gr.Row():
+                            self.prompt = gr.Textbox(label="Prompt", elem_id=f"{id_part}_prompt", interactive=True, show_label=True, lines=2, placeholder="Prompt (press Ctrl+Enter or Alt+Enter to generate)", elem_classes=["prompt"])
+                            self.prompt_img = gr.File(label="", elem_id=f"{id_part}_prompt_image", file_count="single", type="binary", visible=False)
+                with gr.Row():
+                    with gr.Column(scale=80):
+                        with gr.Row():
+                            self.style_token = gr.Textbox(label="Style token", elem_id=f"{id_part}_style_token", interactive=True, show_label=True, lines=1, placeholder="Style Token (press Ctrl+Enter or Alt+Enter to generate)", elem_classes=["prompt"])
+                with gr.Row():
+                    with gr.Column(scale=80):
+                        with gr.Row():
+                            self.quality_token = gr.Textbox(label="Quality token", elem_id=f"{id_part}_quality_token", interactive=True, show_label=True, lines=1, placeholder="Quality Token (press Ctrl+Enter or Alt+Enter to generate)", elem_classes=["prompt"])
+                with gr.Row():
+                    with gr.Column(scale=80):
+                        with gr.Row():
+                            self.model_activation = gr.Textbox(label="Model activation", elem_id=f"{id_part}_model_activation", interactive=True, show_label=True, lines=1, placeholder="LoRA trigger (press Ctrl+Enter or Alt+Enter to generate)", elem_classes=["prompt"])
+                with gr.Row():
+                    with gr.Column(scale=80):
+                        with gr.Row():
+                            self.negative_prompt = gr.Textbox(label="Negative prompt", elem_id=f"{id_part}_neg_prompt", interactive=True, show_label=True, lines=1, placeholder="Negative prompt (press Ctrl+Enter or Alt+Enter to generate)", elem_classes=["prompt"])
 
             self.button_interrogate = None
             self.button_deepbooru = None
@@ -215,23 +234,39 @@ class Toprow:
                     )
 
                 with gr.Row(elem_id=f"{id_part}_tools"):
+                    self.process_json_gpt_prompt_button = ToolButton(value=process_json_gpt_prompt_symbol, elem_id=f"{id_part}_process_json_gpt_prompt")
                     self.paste = ToolButton(value=paste_symbol, elem_id="paste")
                     self.clear_prompt_button = ToolButton(value=clear_prompt_symbol, elem_id=f"{id_part}_clear_prompt")
                     self.restore_progress_button = ToolButton(value=restore_progress_symbol, elem_id=f"{id_part}_restore_progress", visible=False)
 
+                    self.critical_token_counter = gr.HTML(value="<span>0/75</span>", elem_id=f"{id_part}_critical_token_counter", elem_classes=["token-counter"])
+                    self.critical_token_button = gr.Button(visible=False, elem_id=f"{id_part}_critical_token_button")
                     self.token_counter = gr.HTML(value="<span>0/75</span>", elem_id=f"{id_part}_token_counter", elem_classes=["token-counter"])
                     self.token_button = gr.Button(visible=False, elem_id=f"{id_part}_token_button")
+                    self.style_token_counter = gr.HTML(value="<span>0/75</span>", elem_id=f"{id_part}_style_token_counter", elem_classes=["token-counter"])
+                    self.style_token_button = gr.Button(visible=False, elem_id=f"{id_part}_style_token_button")
+                    self.quality_token_counter = gr.HTML(value="<span>0/75</span>", elem_id=f"{id_part}_quality_token_counter", elem_classes=["token-counter"])
+                    self.quality_token_button = gr.Button(visible=False, elem_id=f"{id_part}_quality_token_button")
+                    self.model_activation_counter = gr.HTML(value="<span>0/75</span>", elem_id=f"{id_part}_model_activation_counter", elem_classes=["token-counter"])
+                    self.model_activation_button = gr.Button(visible=False, elem_id=f"{id_part}_model_activation_button")
                     self.negative_token_counter = gr.HTML(value="<span>0/75</span>", elem_id=f"{id_part}_negative_token_counter", elem_classes=["token-counter"])
                     self.negative_token_button = gr.Button(visible=False, elem_id=f"{id_part}_negative_token_button")
 
                     self.clear_prompt_button.click(
                         fn=lambda *x: x,
                         _js="confirm_clear_prompt",
-                        inputs=[self.prompt, self.negative_prompt],
-                        outputs=[self.prompt, self.negative_prompt],
+                        inputs=[self.critical_token, self.prompt, self.style_token, self.quality_token, self.model_activation, self.negative_prompt],
+                        outputs=[self.critical_token, self.prompt, self.style_token, self.quality_token, self.model_activation, self.negative_prompt],
                     )
 
-                self.ui_styles = ui_prompt_styles.UiPromptStyles(id_part, self.prompt, self.negative_prompt)
+                    self.process_json_gpt_prompt_button.click(
+                        fn=lambda *x: x,
+                        _js="process_json_gpt_prompt",
+                        inputs=[self.gpt_prompt, self.critical_token, self.prompt, self.style_token, self.quality_token, self.model_activation, self.negative_prompt],
+                        outputs=[self.gpt_prompt, self.critical_token, self.prompt, self.style_token, self.quality_token, self.model_activation, self.negative_prompt],
+                    )
+
+                self.ui_styles = ui_prompt_styles.UiPromptStyles(id_part, self.critical_token, self.prompt, self.style_token, self.quality_token, self.model_activation, self.negative_prompt)
 
         self.prompt_img.change(
             fn=modules.images.image_data,
@@ -439,7 +474,11 @@ def create_ui():
                 _js="submit",
                 inputs=[
                     dummy_component,
+                    toprow.critical_token,
                     toprow.prompt,
+                    toprow.style_token,
+                    toprow.quality_token,
+                    toprow.model_activation,
                     toprow.negative_prompt,
                     toprow.ui_styles.dropdown,
                     steps,
@@ -492,7 +531,11 @@ def create_ui():
             )
 
             txt2img_paste_fields = [
+                (toprow.critical_token, "Critical token"),
                 (toprow.prompt, "Prompt"),
+                (toprow.style_token, "Style token"),
+                (toprow.quality_token, "Quality token"),
+                (toprow.model_activation, "Model activation"),
                 (toprow.negative_prompt, "Negative prompt"),
                 (steps, "Steps"),
                 (sampler_name, "Sampler"),
@@ -522,7 +565,11 @@ def create_ui():
             ))
 
             txt2img_preview_params = [
+                toprow.critical_token,
                 toprow.prompt,
+                toprow.style_token,
+                toprow.quality_token,
+                toprow.model_activation,
                 toprow.negative_prompt,
                 steps,
                 sampler_name,
@@ -532,7 +579,11 @@ def create_ui():
                 height,
             ]
 
+            toprow.critical_token_button.click(fn=wrap_queued_call(update_token_counter), inputs=[toprow.critical_token, steps], outputs=[toprow.critical_token_counter])
             toprow.token_button.click(fn=wrap_queued_call(update_token_counter), inputs=[toprow.prompt, steps], outputs=[toprow.token_counter])
+            toprow.style_token_button.click(fn=wrap_queued_call(update_token_counter), inputs=[toprow.style_token, steps], outputs=[toprow.style_token_counter])
+            toprow.quality_token_button.click(fn=wrap_queued_call(update_token_counter), inputs=[toprow.quality_token, steps], outputs=[toprow.quality_token_counter])
+            toprow.model_activation_button.click(fn=wrap_queued_call(update_token_counter), inputs=[toprow.model_activation, steps], outputs=[toprow.model_activation_counter])
             toprow.negative_token_button.click(fn=wrap_queued_call(update_token_counter), inputs=[toprow.negative_prompt, steps], outputs=[toprow.negative_token_counter])
 
         extra_networks_ui = ui_extra_networks.create_ui(txt2img_interface, [txt2img_generation_tab], 'txt2img')

@@ -132,7 +132,11 @@ function setupExtraNetworks() {
         });
     }
 
+    registerPrompt('txt2img', 'txt2img_critical_token');
     registerPrompt('txt2img', 'txt2img_prompt');
+    registerPrompt('txt2img', 'txt2img_style_token');
+    registerPrompt('txt2img', 'txt2img_quality_token');
+    registerPrompt('txt2img', 'txt2img_model_activation');
     registerPrompt('txt2img', 'txt2img_neg_prompt');
     registerPrompt('img2img', 'img2img_prompt');
     registerPrompt('img2img', 'img2img_neg_prompt');

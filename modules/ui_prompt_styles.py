@@ -50,7 +50,7 @@ def refresh_styles():
 
 
 class UiPromptStyles:
-    def __init__(self, tabname, main_ui_prompt, main_ui_negative_prompt):
+    def __init__(self, tabname, main_ui_critical_token, main_ui_prompt, main_ui_style_token, main_ui_quality_token, main_ui_model_activation, main_ui_negative_prompt):
         self.tabname = tabname
 
         with gr.Row(elem_id=f"{tabname}_styles_row"):
@@ -64,7 +64,19 @@ class UiPromptStyles:
                 self.materialize = ui_components.ToolButton(value=styles_materialize_symbol, elem_id=f"{tabname}_style_apply", tooltip="Apply all selected styles from the style selction dropdown in main UI to the prompt.")
 
             with gr.Row():
+                self.critical_token = gr.Textbox(label="Critical token", show_label=True, elem_id=f"{tabname}_edit_style_critical_token", lines=3)
+
+            with gr.Row():
                 self.prompt = gr.Textbox(label="Prompt", show_label=True, elem_id=f"{tabname}_edit_style_prompt", lines=3)
+
+            with gr.Row():
+                self.style_token = gr.Textbox(label="Style token", show_label=True, elem_id=f"{tabname}_edit_style_style_token", lines=3)
+
+            with gr.Row():
+                self.quality_token = gr.Textbox(label="Quality token", show_label=True, elem_id=f"{tabname}_edit_style_quality_token", lines=3)
+
+            with gr.Row():
+                self.model_activation = gr.Textbox(label="Model activation", show_label=True, elem_id=f"{tabname}_edit_style_model_activation", lines=3)
 
             with gr.Row():
                 self.neg_prompt = gr.Textbox(label="Negative prompt", show_label=True, elem_id=f"{tabname}_edit_style_neg_prompt", lines=3)
@@ -77,13 +89,13 @@ class UiPromptStyles:
         self.selection.change(
             fn=select_style,
             inputs=[self.selection],
-            outputs=[self.prompt, self.neg_prompt, self.delete, self.save],
+            outputs=[self.critical_token, self.prompt, self.style_token, self.quality_token, self.model_activation, self.neg_prompt, self.delete, self.save],
             show_progress=False,
         )
 
         self.save.click(
             fn=save_style,
-            inputs=[self.selection, self.prompt, self.neg_prompt],
+            inputs=[self.selection, self.critical_token, self.prompt, self.style_token, self.quality_token, self.model_activation, self.neg_prompt],
             outputs=[self.delete],
             show_progress=False,
         ).then(refresh_styles, outputs=[self.dropdown, self.selection], show_progress=False)
@@ -92,14 +104,14 @@ class UiPromptStyles:
             fn=delete_style,
             _js='function(name){ if(name == "") return ""; return confirm("Delete style " + name + "?") ? name : ""; }',
             inputs=[self.selection],
-            outputs=[self.selection, self.prompt, self.neg_prompt],
+            outputs=[self.selection, self.critical_token, self.prompt, self.style_token, self.quality_token, self.model_activation, self.neg_prompt],
             show_progress=False,
         ).then(refresh_styles, outputs=[self.dropdown, self.selection], show_progress=False)
 
         self.materialize.click(
             fn=materialize_styles,
-            inputs=[main_ui_prompt, main_ui_negative_prompt, self.dropdown],
-            outputs=[main_ui_prompt, main_ui_negative_prompt, self.dropdown],
+            inputs=[main_ui_critical_token, main_ui_prompt, main_ui_style_token, main_ui_quality_token, main_ui_model_activation, main_ui_negative_prompt, self.dropdown],
+            outputs=[main_ui_critical_token, main_ui_prompt, main_ui_style_token, main_ui_quality_token, main_ui_model_activation, main_ui_negative_prompt, self.dropdown],
             show_progress=False,
         ).then(fn=None, _js="function(){update_"+tabname+"_tokens(); closePopup();}", show_progress=False)
 
