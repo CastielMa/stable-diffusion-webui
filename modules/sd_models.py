@@ -167,7 +167,7 @@ def list_models():
         checkpoint_info.register()
 
     #vae_url = "https://huggingface.co/casque/vaeFtMse840000Ema_v100/blob/main/vaeFtMse840000Ema_v100.pt"
-    vae_url = "https://civitai.com/api/download/models/28569"
+    vae_url = "https://civitai.com/api/download/models/118561"
 
     vae_model_name = "bluePencilRealistic_v1.ckpt" if getattr(shared.sd_model, 'is_sdxl', False) else "bluePencilRealistic_v1.ckpt"
     vae_model_path = os.path.join(paths.models_path, "VAE", vae_model_name)
