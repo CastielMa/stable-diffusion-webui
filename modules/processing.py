@@ -482,8 +482,10 @@ class StableDiffusionProcessing:
 
 class Processed:
     def __init__(self, p: StableDiffusionProcessing, images_list, seed=-1, info="", subseed=None, all_prompts=None, all_negative_prompts=None, all_seeds=None, all_subseeds=None, index_of_first_image=0, infotexts=None, comments=""):
+        processed_prompt = process_json_gpt_prompt(p.prompt)
+
         self.images = images_list
-        self.prompt = p.prompt
+        self.prompt = processed_prompt
         self.negative_prompt = p.negative_prompt
         self.seed = seed
         self.subseed = subseed
@@ -527,7 +529,6 @@ class Processed:
         self.seed = int(self.seed if not isinstance(self.seed, list) else self.seed[0]) if self.seed is not None else -1
         self.subseed = int(self.subseed if not isinstance(self.subseed, list) else self.subseed[0]) if self.subseed is not None else -1
         self.is_using_inpainting_conditioning = p.is_using_inpainting_conditioning
-        self.prompt = process_json_gpt_prompt(self.prompt)
 
         self.all_prompts = all_prompts or p.all_prompts or [self.prompt]
         self.all_negative_prompts = all_negative_prompts or p.all_negative_prompts or [self.negative_prompt]
