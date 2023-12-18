@@ -636,6 +636,7 @@ def process_json_gpt_prompt(prompt):
     quality_token = quality_token_input
     model_activation = model_activation_input
     full_prompt = critical_token + ", " + prompt + ", " + style_token + ", " + quality_token + ", " + model_activation
+    print("full prompt", full_prompt)
     return full_prompt
 
 def create_random_tensors(shape, seeds, subseeds=None, subseed_strength=0.0, seed_resize_from_h=0, seed_resize_from_w=0, p=None):
