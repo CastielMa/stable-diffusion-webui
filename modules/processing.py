@@ -482,8 +482,10 @@ class StableDiffusionProcessing:
 
 class Processed:
     def __init__(self, p: StableDiffusionProcessing, images_list, seed=-1, info="", subseed=None, all_prompts=None, all_negative_prompts=None, all_seeds=None, all_subseeds=None, index_of_first_image=0, infotexts=None, comments=""):
+        processed_prompt = process_json_gpt_prompt(p.prompt)
+
         self.images = images_list
-        self.prompt = p.prompt
+        self.prompt = processed_prompt
         self.negative_prompt = p.negative_prompt
         self.seed = seed
         self.subseed = subseed
@@ -535,8 +537,10 @@ class Processed:
         self.infotexts = infotexts or [info]
 
     def js(self):
+        pre_prompt = self.all_prompts[0],
+        processed_prompt = process_json_gpt_prompt(pre_prompt)
         obj = {
-            "prompt": self.all_prompts[0],
+            "prompt": processed_prompt,
             "all_prompts": self.all_prompts,
             "negative_prompt": self.all_negative_prompts[0],
             "all_negative_prompts": self.all_negative_prompts,
@@ -577,6 +581,63 @@ class Processed:
     def get_token_merging_ratio(self, for_hr=False):
         return self.token_merging_ratio_hr if for_hr else self.token_merging_ratio
 
+def process_json_gpt_prompt(prompt):
+    categories = { "gender": "critical", "camera_distance": "critical_2", "age": "critical",
+        "action": "prompt",
+        "genre": "style", "region": "style", "hair_color": "style", "eye_color": "style", "hair_style": "style",
+        "clothing_top": "style", "clothing_bottom": "style", "place": "style",
+        "time_of_day": "style", "visual_effect": "style"}
+
+    keyAppendix = {
+        "hair_color": "hair",
+        "eye_color": "eyes",
+        "hair_style": "hair",
+        "age": "years old"
+    }
+
+    gpt_prompt = json.loads(prompt)
+    critical_token_input = ""
+    critical_token_input_2 = ""
+    prompt_input = ""
+    style_token_input = ""
+    no_match = ""
+    for key, value in gpt_prompt.items:
+        keyword = key.toLowerCase()
+        if keyword in categories:
+            category = categories.get(keyword)
+            if category == "critical":
+                if keyword in keyAppendix:
+                    subject = keyAppendix.get(keyword)
+                    critical_token_input = critical_token_input + value + " " + subject + ", "
+                else:
+                    critical_token_input += value + ", "
+            elif category == "prompt":
+                prompt_input = prompt_input + value + ", "
+            elif category == "critical_2":
+                critical_token_input_2 = critical_token_input_2 + value + ", "
+            elif category == "style":
+                if keyword in keyAppendix:
+                    subject = keyAppendix.get(keyword)
+                    style_token_input = style_token_input + value + " " + subject + ", "
+                else:
+                    style_token_input = style_token_input + value + ", "
+            else:
+                no_match = ""
+
+    critical_token_input = critical_token_input[0, -2]
+    critical_token_input_2 = critical_token_input_2[0, -2]
+    prompt_input = prompt_input[0, -2]
+    style_token_input = style_token_input[0, -2]
+    quality_token_input = "best quality, extremely detailed"
+    model_activation_input = "<" + "lora:stylized_3dcg_v4-epoch-000012:0.8" + ">"
+    negative_prompt_input = "EasyNegativeV2, (low quality:1.2), (worst quality:1.2), nsfw, extra arm, extra fingers, logo"
+    critical_token = critical_token_input + ", " + critical_token_input_2
+    prompt = prompt_input
+    style_token = style_token_input
+    quality_token = quality_token_input
+    model_activation = model_activation_input
+    full_prompt = critical_token + ", " + prompt + ", " + style_token + ", " + quality_token + ", " + model_activation
+    return full_prompt
 
 def create_random_tensors(shape, seeds, subseeds=None, subseed_strength=0.0, seed_resize_from_h=0, seed_resize_from_w=0, p=None):
     g = rng.ImageRNG(shape, seeds, subseeds=subseeds, subseed_strength=subseed_strength, seed_resize_from_h=seed_resize_from_h, seed_resize_from_w=seed_resize_from_w)
