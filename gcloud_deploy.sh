@@ -1,5 +1,6 @@
 # install
 
+sudo apt install nvidia-cuda-toolkit
 sudo apt-get update
 sudo apt -y install wget git python3 
 
